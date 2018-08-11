@@ -11,26 +11,25 @@ class MyApp extends StatelessWidget {
   }
 }
 
-enum Animate { idle, animating }
-
 class MyHomePage extends StatefulWidget {
   @override
   _MyHomePageState createState() => new _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
+  // Create lists for the animation controller, width, height, border radius
+  // and colors for each dot.
   List<AnimationController> controller = [];
-  List<Animation> colorWidth = [];
-  Animate animate = Animate.idle;
-  List<Animation> colorHeight = [];
+  List<Animation> animateWidth = [];
+  List<Animation> animateHeight = [];
   List<Animation> borderRadius = [];
-  List<Animation> width;
   List<List<Color>> colors = [];
   List<Color> backgroundColor = [Colors.white, Colors.white];
   var i = 0;
-  PageController pageController = PageController(viewportFraction: 1.0);
+
   @override
   void initState() {
+    // Initialize the color array
     colors.add([Colors.blue[600], Colors.blue[300]]);
     colors.add([Colors.red[600], Colors.red[300]]);
     colors.add([Colors.green[600], Colors.green[300]]);
@@ -42,28 +41,34 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     colors.add([Colors.amber[600], Colors.amber[300]]);
     colors.add([Colors.teal[600], Colors.teal[300]]);
 
+    // Create animation controllers for each color dot
     for (var i = 0; i < 10; i++) {
       controller.add(AnimationController(
-          vsync: this, duration: Duration(milliseconds: 250)));
+          vsync: this, duration: Duration(milliseconds: 750)));
     }
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
+    double width = MediaQuery.of(context).size.width;
+    double height = MediaQuery.of(context).size.height;
+
     void _handleAnimation(int index) {
       i = index;
-      setState(() {
-        animate = Animate.animating;
-      });
-      controller[index].isCompleted
-          ? controller[index].reverse()
-          : controller[index].forward();
+      controller[index].forward();
     }
 
-    _handleColorStatus(status) {
+    // When _handleBackground is called it takes the status of
+    // the animation. If the animation is complete the background
+    // is changed to the animated color, so when a new color begins
+    // to animate it animates over the previous color. White is the
+    // default background.
+    void _handleBackground(status) {
       if (status == AnimationStatus.completed) {
         setState(() {
+          // Also reset the previous controller so if it is pressed
+          // again it animates forward rather than not animating.
           controller[i].reset();
           backgroundColor = colors[i];
         });
@@ -71,47 +76,71 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     }
 
     for (var i = 0; i < 10; i++) {
+      // Initialize the animations for each dot
+      // Tween allows for simple animations where it
+      // interpolates the values inbetween the begin and end
       borderRadius.add(Tween(
-        begin: 300.0,
+        begin: 200.0,
         end: 0.0,
       ).animate(
+          // We can create a curved animation that starts
+          // slightly later than the width and height animation
+          // This gives the appearance that its is a circle at first
+          // which turns into a rectangle
           CurvedAnimation(parent: controller[i], curve: Interval(0.3, 1.0)))
         ..addListener(() {
           setState(() {});
         }));
 
-      colorWidth.add(Tween(
+      // The container should start at 0.0 where it is not visible
+      // then expand to the height of the screen. I set animateWidth
+      // to be height rather than width because if not height will
+      // expand at a quicker rate than the width due to the height
+      // being larger than the width. The user won't be able to notice
+      // that it goes past max width of the screen but creates an
+      // interesting effect.
+      animateWidth.add(Tween(
         begin: 0.0,
-        end: MediaQuery.of(context).size.width,
+        end: height,
       ).animate(
           CurvedAnimation(parent: controller[i], curve: Interval(0.0, 1.0)))
         ..addListener(() {
           setState(() {});
         }));
-      colorHeight.add(Tween(
+
+      // We could use animateWidth for height and width, but if I want
+      // to edit the animation in the future I can easily modify it here.
+      animateHeight.add(Tween(
         begin: 0.0,
-        end: MediaQuery.of(context).size.height,
-      ).animate(CurvedAnimation(
-          parent: controller[i],
-          curve: Interval(0.0, 1.0, curve: Curves.easeIn)))
+        end: height,
+      ).animate(
+          CurvedAnimation(parent: controller[i], curve: Interval(0.0, 1.0)))
         ..addListener(() {
           setState(() {});
         })
-        ..addStatusListener(_handleColorStatus));
+        ..addStatusListener(_handleBackground));
     }
 
     return new Scaffold(
+        // The stack allows for displaying items on top of each other
         body: Stack(
       children: <Widget>[
+        // Here this creates a container which is the background
+        // I pass it the value of backgroundColor which changes each
+        // the animation finishes. This allows for the appearence that
+        // each animation animates over the previous color.
         Container(
-          height: MediaQuery.of(context).size.height,
-          width: MediaQuery.of(context).size.width,
+          height: height,
+          width: width,
           decoration: BoxDecoration(
               gradient: LinearGradient(
                   begin: Alignment.bottomLeft,
                   end: Alignment.topRight,
                   colors: backgroundColor)),
         ),
+        // This is the container that actually does the animation
+        // The width and height are updated each frame as it animates
+        // because we added an empty listener for setState(() {})
         Center(
           child: Container(
             decoration: BoxDecoration(
@@ -120,29 +149,47 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                     end: Alignment.topRight,
                     colors: colors[i]),
                 borderRadius: BorderRadius.circular(borderRadius[i].value)),
-            width: colorWidth[i].value,
-            height: colorHeight[i].value,
+            width: animateWidth[i].value,
+            height: animateHeight[i].value,
           ),
         ),
         ListView.builder(
+          // Scroll horizontally
           scrollDirection: Axis.horizontal,
+          // Create a page controller with a viewport fraction
+          // that snaps to each dot. 115 = dot width + padding
+          controller: PageController(viewportFraction: 1 / (width / 115)),
+          // PageScrollPhysics are required for item snapping
+          physics: PageScrollPhysics(),
           itemCount: 10,
           itemBuilder: (context, index) {
             return Align(
+              // Align the dots to center
               alignment: Alignment.center,
+              // Create a gesture detector which handles what
+              // happens when one of the dots are pressed
               child: GestureDetector(
                 onTap: () {
                   _handleAnimation(index);
                 },
-                child: Container(
-                  decoration: BoxDecoration(
+                child: Padding(
+                  // Space out the dots such they are not touching
+                  padding: const EdgeInsets.only(left: 40.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+						border: Border.all(color: Colors.white, width: 1.5),
+                      shape: BoxShape.circle,
+                      // Gradient that starts at the bottom left
+                      // and ends at the top right
                       gradient: LinearGradient(
                           begin: Alignment.bottomLeft,
                           end: Alignment.topRight,
                           colors: colors[index]),
-                      borderRadius: BorderRadius.circular(25.0)),
-                  width: 50.0,
-                  height: 50.0,
+                    ),
+                    // Define the dimensions of the color dots
+                    width: 75.0,
+                    height: 75.0,
+                  ),
                 ),
               ),
             );
