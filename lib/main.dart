@@ -23,9 +23,12 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   List<Animation> animateWidth = [];
   List<Animation> animateHeight = [];
   List<Animation> borderRadius = [];
+  PageController pageController;
   List<List<Color>> colors = [];
+  double width;
+  double height;
   List<Color> backgroundColor = [Colors.white, Colors.white];
-  var i = 0;
+  var i = 1;
 
   @override
   void initState() {
@@ -45,34 +48,6 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     for (var i = 0; i < 10; i++) {
       controller.add(AnimationController(
           vsync: this, duration: Duration(milliseconds: 750)));
-    }
-    super.initState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    double width = MediaQuery.of(context).size.width;
-    double height = MediaQuery.of(context).size.height;
-
-    void _handleAnimation(int index) {
-      i = index;
-      controller[index].forward();
-    }
-
-    // When _handleBackground is called it takes the status of
-    // the animation. If the animation is complete the background
-    // is changed to the animated color, so when a new color begins
-    // to animate it animates over the previous color. White is the
-    // default background.
-    void _handleBackground(status) {
-      if (status == AnimationStatus.completed) {
-        setState(() {
-          // Also reset the previous controller so if it is pressed
-          // again it animates forward rather than not animating.
-          controller[i].reset();
-          backgroundColor = colors[i];
-        });
-      }
     }
 
     for (var i = 0; i < 10; i++) {
@@ -101,7 +76,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       // interesting effect.
       animateWidth.add(Tween(
         begin: 0.0,
-        end: height,
+        end: 1000.0,
       ).animate(
           CurvedAnimation(parent: controller[i], curve: Interval(0.0, 1.0)))
         ..addListener(() {
@@ -112,7 +87,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       // to edit the animation in the future I can easily modify it here.
       animateHeight.add(Tween(
         begin: 0.0,
-        end: height,
+        end: 1000.0,
       ).animate(
           CurvedAnimation(parent: controller[i], curve: Interval(0.0, 1.0)))
         ..addListener(() {
@@ -120,6 +95,39 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         })
         ..addStatusListener(_handleBackground));
     }
+
+    super.initState();
+  }
+
+  // When _handleBackground is called it takes the status of
+  // the animation. If the animation is complete the background
+  // is changed to the animated color, so when a new color begins
+  // to animate it animates over the previous color. White is the
+  // default background.
+
+  void _handleBackground(status) {
+    if (status == AnimationStatus.completed) {
+      print('finished');
+      setState(() {
+        // Also reset the previous controller so if it is pressed
+        // again it animates forward rather than not animating.
+        controller[i].reset();
+        backgroundColor = colors[i];
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    void _handleAnimation(int index) {
+      i = index;
+      controller[index].forward();
+    }
+
+    width = MediaQuery.of(context).size.width;
+    height = MediaQuery.of(context).size.height;
+    pageController = PageController(
+        viewportFraction: 1 / (width / ((width / 9.9 * 2) + (width / 9.9))));
 
     return new Scaffold(
         // The stack allows for displaying items on top of each other
@@ -158,7 +166,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           scrollDirection: Axis.horizontal,
           // Create a page controller with a viewport fraction
           // that snaps to each dot. 115 = dot width + padding
-          controller: PageController(viewportFraction: 1 / (width / 115)),
+          controller: pageController,
           // PageScrollPhysics are required for item snapping
           physics: PageScrollPhysics(),
           itemCount: 10,
@@ -170,14 +178,20 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
               // happens when one of the dots are pressed
               child: GestureDetector(
                 onTap: () {
+                  print(index);
+                  if (index != 0 && index != 9) {
+                    pageController.animateToPage(index - 1,
+                        curve: Curves.easeInOut,
+                        duration: Duration(milliseconds: 750));
+                  }
                   _handleAnimation(index);
                 },
                 child: Padding(
                   // Space out the dots such they are not touching
-                  padding: const EdgeInsets.only(left: 40.0),
+                  padding: EdgeInsets.only(left: width / 9.9),
                   child: Container(
                     decoration: BoxDecoration(
-						border: Border.all(color: Colors.white, width: 1.5),
+                      border: Border.all(color: Colors.white, width: 1.5),
                       shape: BoxShape.circle,
                       // Gradient that starts at the bottom left
                       // and ends at the top right
@@ -187,8 +201,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                           colors: colors[index]),
                     ),
                     // Define the dimensions of the color dots
-                    width: 75.0,
-                    height: 75.0,
+                    width: width / 9.9 * 2,
+                    height: width / 9.9 * 2,
                   ),
                 ),
               ),
