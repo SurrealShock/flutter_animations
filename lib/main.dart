@@ -27,6 +27,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   List<List<Color>> colors = [];
   double width;
   double height;
+  double dx = 0.0;
+  double dy = 0.0;
   List<Color> backgroundColor = [Colors.white, Colors.white];
   var i = 1;
 
@@ -58,10 +60,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         begin: 200.0,
         end: 0.0,
       ).animate(
-          // We can create a curved animation that starts
-          // slightly later than the width and height animation
-          // This gives the appearance that its is a circle at first
-          // which turns into a rectangle
+        // We can create a curved animation that starts
+        // slightly later than the width and height animation
+        // This gives the appearance that its is a circle at first
+        // which turns into a rectangle
           CurvedAnimation(parent: controller[i], curve: Interval(0.3, 1.0)))
         ..addListener(() {
           setState(() {});
@@ -99,6 +101,12 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     super.initState();
   }
 
+  double _normalize(double dataIn, double axis){
+    return ((dataIn) - (axis / 2)) / (axis - (axis / 2));
+  }
+
+
+
   // When _handleBackground is called it takes the status of
   // the animation. If the animation is complete the background
   // is changed to the animated color, so when a new color begins
@@ -130,86 +138,96 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         viewportFraction: 1 / (width / ((width / 9.9 * 2) + (width / 9.9))));
 
     return new Scaffold(
-        // The stack allows for displaying items on top of each other
+      // The stack allows for displaying items on top of each other
         body: Stack(
-      children: <Widget>[
-        // Here this creates a container which is the background
-        // I pass it the value of backgroundColor which changes each
-        // the animation finishes. This allows for the appearence that
-        // each animation animates over the previous color.
-        Container(
-          height: height,
-          width: width,
-          decoration: BoxDecoration(
-              gradient: LinearGradient(
-                  begin: Alignment.bottomLeft,
-                  end: Alignment.topRight,
-                  colors: backgroundColor)),
-        ),
-        // This is the container that actually does the animation
-        // The width and height are updated each frame as it animates
-        // because we added an empty listener for setState(() {})
-        Center(
-          child: Container(
-            decoration: BoxDecoration(
-                gradient: LinearGradient(
-                    begin: Alignment.bottomLeft,
-                    end: Alignment.topRight,
-                    colors: colors[i]),
-                borderRadius: BorderRadius.circular(borderRadius[i].value)),
-            width: animateWidth[i].value,
-            height: animateHeight[i].value,
-          ),
-        ),
-        ListView.builder(
-          // Scroll horizontally
-          scrollDirection: Axis.horizontal,
-          // Create a page controller with a viewport fraction
-          // that snaps to each dot. 115 = dot width + padding
-          controller: pageController,
-          // PageScrollPhysics are required for item snapping
-          physics: PageScrollPhysics(),
-          itemCount: 10,
-          itemBuilder: (context, index) {
-            return Align(
-              // Align the dots to center
-              alignment: Alignment.center,
-              // Create a gesture detector which handles what
-              // happens when one of the dots are pressed
-              child: GestureDetector(
-                onTap: () {
-                  print(index);
-                  if (index != 0 && index != 9) {
-                    pageController.animateToPage(index - 1,
-                        curve: Curves.easeInOut,
-                        duration: Duration(milliseconds: 750));
-                  }
-                  _handleAnimation(index);
-                },
-                child: Padding(
-                  // Space out the dots such they are not touching
-                  padding: EdgeInsets.only(left: width / 9.9),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white, width: 1.5),
-                      shape: BoxShape.circle,
-                      // Gradient that starts at the bottom left
-                      // and ends at the top right
-                      gradient: LinearGradient(
-                          begin: Alignment.bottomLeft,
-                          end: Alignment.topRight,
-                          colors: colors[index]),
-                    ),
-                    // Define the dimensions of the color dots
-                    width: width / 9.9 * 2,
-                    height: width / 9.9 * 2,
-                  ),
-                ),
+          children: <Widget>[
+            // Here this creates a container which is the background
+            // I pass it the value of backgroundColor which changes each
+            // the animation finishes. This allows for the appearence that
+            // each animation animates over the previous color.
+            Container(
+              height: height,
+              width: width,
+              decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                      begin: Alignment.bottomLeft,
+                      end: Alignment.topRight,
+                      colors: backgroundColor)),
+            ),
+            // This is the container that actually does the animation
+            // The width and height are updated each frame as it animates
+            // because we added an empty listener for setState(() {})
+            Center(
+              child: Container(
+                  child: new Align(
+                      alignment: Alignment(_normalize(dx, width), _normalize(dy, height)),
+                      child: Container(
+                        decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                                begin: Alignment.bottomLeft,
+                                end: Alignment.topRight,
+                                colors: colors[i]),
+                            borderRadius: BorderRadius.circular(borderRadius[i].value)),
+                        width: animateWidth[i].value,
+                        height: animateHeight[i].value,
+                      )
+                  )
               ),
-            );
-          },
-        )
-      ],
-    ));
+            ),
+            ListView.builder(
+              // Scroll horizontally
+              scrollDirection: Axis.horizontal,
+              // Create a page controller with a viewport fraction
+              // that snaps to each dot. 115 = dot width + padding
+              controller: pageController,
+              // PageScrollPhysics are required for item snapping
+              physics: PageScrollPhysics(),
+              itemCount: 10,
+              itemBuilder: (context, index) {
+                return Align(
+                  // Align the dots to center
+                  alignment: Alignment.center,
+                  // Create a gesture detector which handles what
+                  // happens when one of the dots are pressed
+                  child: GestureDetector(
+                    onTapDown: (TapDownDetails details){
+                      dx = details.globalPosition.dx;
+                      dy = details.globalPosition.dy;
+                      print("$dx : $dy");
+                    },
+                    onTap: () {
+                      print(index);
+                      if (index != 0 && index != 9) {
+                        pageController.animateToPage(index - 1,
+                            curve: Curves.easeInOut,
+                            duration: Duration(milliseconds: 750));
+                      }
+                      _handleAnimation(index);
+                    },
+                    child: Padding(
+                      // Space out the dots such they are not touching
+                      padding: EdgeInsets.only(left: width / 9.9),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.white, width: 1.5),
+                          shape: BoxShape.circle,
+                          // Gradient that starts at the bottom left
+                          // and ends at the top right
+                          gradient: LinearGradient(
+                              begin: Alignment.bottomLeft,
+                              end: Alignment.topRight,
+                              colors: colors[index]),
+                        ),
+                        // Define the dimensions of the color dots
+                        width: width / 9.9 * 2,
+                        height: width / 9.9 * 2,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            )
+          ],
+        ));
   }
 }
