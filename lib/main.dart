@@ -172,6 +172,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                     ))),
           ),
           ListView.builder(
+			  padding: EdgeInsets.only(right: 40.0),
             // Scroll horizontally
             scrollDirection: Axis.horizontal,
             // Create a page controller with a viewport fraction
